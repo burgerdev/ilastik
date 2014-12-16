@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-import warnings
 import logging
+logger = logging.getLogger(__name__)
 from functools import partial
 from ConfigParser import NoOptionError
 
@@ -47,13 +47,14 @@ from thresholdingTools import OpAnisotropicGaussianSmoothing5d
 
 from thresholdingTools import OpSelectLabels
 
-from opGraphcutSegment import haveGraphCut
+from opGraphcutSegment import haveGraphCut, whyNoGraphCut
 
 if haveGraphCut():
     from opGraphcutSegment import OpObjectsSegment, OpGraphCut
+else:
+    msg = whyNoGraphCut()
+    logger.info("Graph-Cut segmentation not available: {}".format(msg))
 
-
-logger = logging.getLogger(__name__)
 
 # determine labeling implementation
 try:

@@ -22,14 +22,20 @@
 
 try:
     import opengm
-except ImportError:
+except ImportError as err:
     _have_opengm = False
+    _msg = str(err)
 else:
     _have_opengm = True
+    _msg = ""
 
 
 def haveGraphCut():
     return _have_opengm
+
+
+def whyNoGraphCut():
+    return _msg
 
 
 if haveGraphCut():
