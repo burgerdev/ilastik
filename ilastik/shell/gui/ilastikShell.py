@@ -132,6 +132,41 @@ class MemoryWidget(QWidget):
         self.label.setText("cached: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
 
 
+class RequestMemoryWidget(QWidget):
+    """Displays the current memory consumption and a button to open
+       a detailed memory consumption / usage dialog.
+    """
+
+    def __init__(self, parent=None):
+        super(RequestMemoryWidget, self).__init__(parent)
+        self.label = QLabel()
+        h = QHBoxLayout()
+        h.setContentsMargins(0, 0, 0, 0)
+        w = QWidget()
+        h.addWidget(self.label)
+        self.cleanUp()
+        self.setLayout(h)
+
+    def cleanUp(self):
+        self.setMemoryBytes(0)
+
+    def showMemory(self, bla):
+        import gc
+        from itertools import imap, ifilter
+        from lazyflow.request import Request
+        import numpy as np
+        objs = gc.get_objects()
+        requests = ifilter(lambda x: isinstance(x, Request), objs)
+        holding_data = ifilter(lambda x: isinstance(x._result, np.ndarray),
+                               requests)
+        sizes = imap(lambda x: x._result.nbytes, holding_data)
+        size = reduce(lambda x, y: x + y, sizes, 0)
+        self.setMemoryBytes(size)
+
+    def setMemoryBytes(self, bytes):
+        self.label.setText("requests: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
+
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -158,6 +193,9 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
 
+        self.requestMemoryWidget = RequestMemoryWidget()
+        self.statusBar.addPermanentWidget(self.requestMemoryWidget)
+        
         self.memoryWidget = MemoryWidget()
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
@@ -168,6 +206,7 @@ class ProgressDisplayManager(QObject):
             self.memoryWidget.setMemoryBytes(msg)
 
         mgr.totalCacheMemory.subscribe(printIt)
+        mgr.totalCacheMemory.subscribe(self.requestMemoryWidget.showMemory)
 
         # Route all signals we get through a queued connection, 
         #  to ensure that they are handled in the GUI thread
@@ -599,6 +638,14 @@ class IlastikShell(QMainWindow):
         hide = menu.addAction("Hide applets")
         hide.setCheckable(True)
         hide.toggled.connect(hideApplets)
+
+        def startDebugger(*args):
+            print("======= STARTING DEBUGGER ==========")
+            from ipdb import set_trace
+            from PyQt4.QtCore import pyqtRemoveInputHook
+            pyqtRemoveInputHook()
+            set_trace()
+        menu.addAction("Start ipdb", startDebugger)
 
         return menu
 
